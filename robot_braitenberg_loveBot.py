@@ -43,8 +43,8 @@ class Robot_player(Robot):
 
 
 
-        translation = 0.4*(sensor_to_robot[sensor_front]*sensor_to_robot[sensor_front] + sensor_to_robot[sensor_front_left]*sensor_to_robot[sensor_front_left] + sensor_to_robot[sensor_front_right]*sensor_to_robot[sensor_front_right]) # A MODIFIER
-        rotation = ((sensor_to_robot[sensor_front_left])*(sensor_to_robot[sensor_front_left]))*(-1) + ((sensor_to_robot[sensor_front_right])*(sensor_to_robot[sensor_front_right]))*(1) #A MODIFIER
+        translation = 0.1+0.4*(sensor_to_robot[sensor_front]**2 + sensor_to_robot[sensor_front_left]**2 + sensor_to_robot[sensor_front_right]**2) # A MODIFIER
+        rotation = ((sensor_to_robot[sensor_front_left])**10)*(-1) + ((sensor_to_robot[sensor_front_right])**10)*(1) #A MODIFIER
 
         self.iteration = self.iteration + 1        
         return translation, rotation, False
