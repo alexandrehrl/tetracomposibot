@@ -11,7 +11,7 @@ On considère que chaque paramètre peut prendre une valeur parmi trois: -1 (inh
 Calculez le score d'un individu pour maximiser à chaque pas de temps la vitesse de translation et minimiser la vitesse de rotation, c'est à dire:
 * score = somme_sur_toutes_les_iterations ( vitesse_de_translation * ( 1 - abs(vitesse_de_rotation) ) ) 
 
-Attention: il s'agit de la translation et de la rotation *effective*. Par exemple, un robot dont la commande de translation est de 1.0 mais qui se cogne contre un mur ne se déplace pas, donc la translation effective est nulle. Etudiez bien le code pour trouver comment faire.
+Attention: il s'agit de la translation et de la rotation *effective*. Par exemple, un robot dont la commande de translation est de 1.0 mais qui se cogne contre un mur ne se déplace pas, donc la translation effective est nulle. Etudiez bien le code pour trouver comment faire (en particulier, les variables _log_sum_of_..._).
 
 Créez le fichier _robot_randomsearch.py_ (en copiant _robot_optimize.py_), puis modifiez le comme suit:
 * en utilisant les variables existantes, fixer le nombre de comportements à générer aléatoirement qui devront être évalués.
@@ -28,7 +28,9 @@ Remarques:
 
 Un inconvénient du programme précédent vient du fait que la condition initiale (position et orientation initiale) est toujours la même. Cela ne permet pas de garantir que le comportement obtenu sera efficace dans une autre situation. 
 
-En partant du programme précédent (créez un fichier _randomsearch2.py_), modifier le code afin que chaque comportement soit évalué _3_ fois, en tirant aléatoirement l'orientation initiale à chaque fois (vous pouvez modifier la fonction *reset*). Le score d'un comportement sera la somme de ces 3 évaluations.
+En partant du programme précédent (créez un fichier _randomsearch2.py_), modifier le code afin que chaque comportement soit évalué _3_ fois, chacune avec une orientation initiale différente (vous pouvez modifier la fonction *reset*). Le score d'un comportement sera la somme de ces 3 évaluations.
+
+Il est important que les solutions candidates soient _comparables_. Cela implique que les trois orientations initiales utilisées doivent rester les mêmes pour chaque nouveau jeu de paramètre. Pour cela, tirez au hasard ou fixez à la main l'orientation pour chacune des trois conditions initiales.
 
 Remarque: 
 * vous pouvez aussi, si vous le souhaitez, faire varier la position de départ (éviter de positionner votre robot dans un mur).
