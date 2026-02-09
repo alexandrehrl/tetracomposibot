@@ -1,50 +1,59 @@
-
-from robot import * 
-
-nb_robots = 0
-debug = True
+import math
+import random
+from robot import *
 
 class Robot_player(Robot):
-
-    team_name = "avoiderdumb"
-    robot_id = -1
-    iteration = 0
+    team_name = "WallFollower_90"
 
     def __init__(self, x_0, y_0, theta_0, name="n/a", team="n/a"):
-        global nb_robots
-        self.robot_id = nb_robots
-        nb_robots+=1
-        super().__init__(x_0, y_0, theta_0, name=name, team=team)
+        super().__init__(x_0, y_0, theta_0, name=name, team=self.team_name)
+        # memory : 0 = normal, >0 = mode secours (recul)
+        self.memory = 0 
+        self.last_front = 1.0
+        self.stuck_counter = 0
 
     def step(self, sensors, sensor_view=None, sensor_robot=None, sensor_team=None):
+        # --- 1. DÉTECTION DE BLOCAGE (Anti-stagnation) ---
+        if sensors[sensor_front] < 0.2 and abs(self.last_front - sensors[sensor_front]) < 0.0001:
+            self.stuck_counter += 1
+        else:
+            self.stuck_counter = 0
+        self.last_front = sensors[sensor_front]
 
-        sensor_to_wall = []
-        sensor_to_robot = []
-        for i in range (0,8):
-            if  sensor_view[i] == 1:
-                sensor_to_wall.append( sensors[i] )
-                sensor_to_robot.append(1.0)
-            elif  sensor_view[i] == 2:
-                sensor_to_wall.append( 1.0 )
-                sensor_to_robot.append( sensors[i] )
+        if self.stuck_counter > 10:
+            self.memory = 25 # Manoeuvre de secours
+            self.stuck_counter = 0
+
+        # --- 2. SUBSOMPTION : ÉTATS PRIORITAIRES ---
+        
+        # PRIORITÉ 1 : Sortir d'un angle mort (Recul puis pivot)
+        if self.memory > 0:
+            self.memory -= 1
+            if self.memory > 15:
+                return -0.7, 0.0, False # Recul pur
             else:
-                sensor_to_wall.append(1.0)
-                sensor_to_robot.append(1.0)
+                return 0.0, 1.0, False  # Pivot sec
 
-        if debug == True:
-            if self.iteration % 100 == 0:
-                print ("Robot",self.robot_id," (team "+str(self.team_name)+")","at step",self.iteration,":")
-                print ("\tsensors (distance, max is 1.0)  =",sensors)
-                print ("\t\tsensors to wall  =",sensor_to_wall)
-                print ("\t\tsensors to robot =",sensor_to_robot)
-                print ("\ttype (0:empty, 1:wall, 2:robot) =",sensor_view)
-                print ("\trobot's name (if relevant)      =",sensor_robot)
-                print ("\trobot's team (if relevant)      =",sensor_team)
+        # PRIORITÉ 2 : VIRAGE À 90° (Mur droit devant)
+        # Si le mur est très proche devant, on arrête d'avancer et on pivote à 90°
+        if sensors[sensor_front] < 0.25:
+            # On tourne à droite (-1.0) si on longe le mur gauche
+            return 0.0, -1.0, False 
 
+        # --- 3. COMPORTEMENT DE CROISIÈRE (Lignes droites) ---
+        target_dist = 0.4
+        
+        # Ralentissement prédictif pour préparer le virage à 90°
+        speed_factor = min(1.0, sensors[sensor_front_left] * 1.2, sensors[sensor_front_right] * 1.2)
+        translation = 1.0 * speed_factor
 
+        # Suivi de mur latéral (Braitenberg)
+        error = sensors[sensor_left] - target_dist
+        rotation = max(-0.5, min(0.5, error * 2.0))
 
-        translation = sensors[sensor_front]*0.5 # A MODIFIER
-        rotation = (1-(sensors[sensor_front] + sensors[sensor_front_left]))*(-1) + (1-(sensors[sensor_front] + sensors[sensor_front_right]))*(1) + (1-sensors[sensor_front])*(random.choice([-1,1]))#A MODIFIER
+        # Gestion des coins sortants (le mur s'arrête)
+        if sensors[sensor_left] > 0.8:
+            translation = 0.4
+            rotation = 0.8 # On tourne à gauche pour retrouver le mur
 
-        self.iteration = self.iteration + 1        
         return translation, rotation, False

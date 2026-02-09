@@ -1,4 +1,4 @@
-TOKEN = '' 
+TOKEN =''
 
 import discord
 from discord.ext import commands
