@@ -24,10 +24,6 @@ class Robot_player(Robot):
         self.memory = 0
 
     def step(self, sensors, sensor_view=None, sensor_robot=None, sensor_team=None):
-        
-        # -------------------------------------------------------------------------
-        # DÉFINITION DES COMPORTEMENTS (Fonctions locales à step)
-        # -------------------------------------------------------------------------
 
         # Principe du code : 
         # On a implémenté plusieurs comportements de différentes manières (braitenberg modifié, subsomption et arbre de décision (priorité))
@@ -48,7 +44,6 @@ class Robot_player(Robot):
         def cruise_braitenberg(sensor_to_wall):
             """
             comportement croisière, vitesse optimale.
-            Arg: sensor_to_wall (senseur inversé : 1=mur proche, 0=vide)
             implémentation braitenberg légèrement modifié
             """
             translation = 1.0 # vitesse opti
@@ -66,7 +61,6 @@ class Robot_player(Robot):
         def avoid_walls_braitenberg(sensor_to_wall):
             """
             comportement pour éviter les murs.
-            Arg: sensor_to_wall (senseur inversé : 1=mur proche, 0=vide)
             implémentation braitenberg légèrement modifié
             """
             translation = 0.9 
@@ -91,7 +85,6 @@ class Robot_player(Robot):
         def avoid_robots_braitenberg(sensors, sensor_to_robot):
             """
             comportement pour éviter les robots.
-            Arg: sensor_to_robot (senseur inversé : 1=robot proche)
             """
             rotation = 0.0
             
@@ -119,7 +112,6 @@ class Robot_player(Robot):
         def diagonal_sweeper(sensor_to_wall):
             """
             balayage aléatoire + fort que le comportement croisière.
-            Arg: sensor_to_wall (senseur inversé : 1=mur proche)
             """
             translation = 1.0
             rotation = 0.0
@@ -148,9 +140,7 @@ class Robot_player(Robot):
 
         def wall_hugger_with_gap_detection(sensors, sensor_to_wall):
             """
-            Suit les murs et repère les trous.
-            sensor_to_wall (senseur inversé : 1=mur proche)
-            sensors (senseur NON inversé : 1=vide)
+            Suit les murs et repère les trous, pas aussi efficace que souhaité
             """
             translation = 1.0
             
@@ -188,7 +178,6 @@ class Robot_player(Robot):
         def enemy_chaser_braitenberg(sensor_to_enemy):
             """
             LOVEBOT version braitenberg modifiée.
-            sensor_to_enemy (senseur inversé : 1=ennemi proche)
             """
             
             enemy_front = sensor_to_enemy[sensor_front]
@@ -207,12 +196,9 @@ class Robot_player(Robot):
 
         def genetic_braitenberg(sensors):
             """
-            robot génétique.
-            sensors (senseur NON inversé : 1=vide, 0=obstacle).
-            L'algorithme génétique a optimisé les poids en fonction des valeurs brutes.
+            robot génétique optimisé grace à genetic_log.csv avec les fichiers config_genetic_train.py robot_genetic_train.py
             """
             # Paramètres optimaux
-            #trouvé dans genetic log grâce aux fichiers config_genetic_train.py et robot_genetic_train.py
             param = [-0.1602,0.0299,0.9529,0.9400,-0.7794,-0.7607,-0.4079,-0.2086,0.6709,0.2895,-0.2284,-1.0000]
             
             rotation = 0.0
@@ -236,7 +222,8 @@ class Robot_player(Robot):
 
         def tunnel_navigation(sensors, sensor_to_wall):
             """
-            sensor_to_wall (senseur inversé : 1=mur proche)
+            cette fonction sert à naviguer dans le tunnel une fois qu'on sait qu'on est dedans
+            c'est une implémentation par subsomption
             """
             wall_front = sensor_to_wall[sensor_front]
             wall_front_left = sensor_to_wall[sensor_front_left]
@@ -319,7 +306,7 @@ class Robot_player(Robot):
 
         def detect_tunnel(sensors, sensor_to_wall):
             """
-            détecteur de tunnel, renvoie true
+            détecteur de tunnel, renvoie true si 3 conditions respectées, sinon non
             """
             #tunnel de l'arene 4 par exemple
             front_clear = sensor_to_wall[sensor_front] < 0.3
@@ -333,7 +320,7 @@ class Robot_player(Robot):
 
         def detect_confined_space(sensor_to_wall):
             """
-            sensor_to_wall (senseur inversé : 1=mur proche)
+            différence entre tunnel et endroit "confiné"
             """
             obstacles_count = 0
             for i in range(8):
@@ -386,11 +373,9 @@ class Robot_player(Robot):
             else:  # robot_id % 4 == 3
                 return wall_hugger_with_gap_detection(sensors, sensor_to_wall), "WALL_GAP"
 
-
-        # -------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
         # LOGIQUE PRINCIPALE DU STEP
-        # -------------------------------------------------------------------------
-        
+   
         #inversion senseurs comme prévenu auparavant
         
         sensor_to_wall = []
