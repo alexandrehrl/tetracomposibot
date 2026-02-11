@@ -12,32 +12,35 @@ import random
 
 nb_robots = 0
 
-#Principe du code : 
-#On a implémenté plusieurs comportements de différentes manières (braitenberg modifié, subsomption et arbre de décision (priorité))
-#On a 3 robots qui ont de la subsomption pour choisir entre ces comportements
-#On a 1 robot qui est purement génétique (optimisé à l'aide d'un fichier externe)
-#Tous les robots suivent un ordre de priorité qu'on définit plus bas, mais ont tous un trait de personnalité différent (comportement plus présent)
+# Principe du code : 
+# On a implémenté plusieurs comportements de différentes manières (braitenberg modifié, subsomption et arbre de décision (priorité))
+# On a 3 robots qui ont de la subsomption pour choisir entre ces comportements
+# On a 1 robot qui est purement génétique (optimisé à l'aide d'un fichier externe)
+# Tous les robots suivent un ordre de priorité qu'on définit plus bas, mais ont tous un trait de personnalité différent.
 
-#IMPORTANT POUR JUSTIFIER QUE CES COMPORTEMENTS SONT BRAITENBERG : 
-#ligne 461 : rotation = max(-1.0, min(1.0, rotation))
-#on a aussi inversé les valeurs des senseurs pour des valeurs qui nous sont plus "naturelles" :
-# 1 pour danger, 0 pour pas de danger    
+# IMPORTANT POUR JUSTIFIER QUE CES COMPORTEMENTS SONT BRAITENBERG : 
+# ligne 461 : rotation = max(-1.0, min(1.0, rotation))
+# on a aussi inversé les valeurs des senseurspour des valeurs qui nous sont plus "naturelles" :
+#sensor_to_wall : 1 = danger
+#sensor_to_robot : 1 = danger
+#sensor_to_ennemy : 1 = danger
+#sensors : 0 = danger
 
 # COMPORTEMENTS BRAITENBERG
 
 def cruise_braitenberg(sensor_to_wall):
     """
-    comportement croisière, vitesse optimale, virages le moins serrés possible pour ne pas perdre de la vitesse
+    comportement croisière, vitesse optimale.
+    Arg: sensor_to_wall (senseur inversé : 1=mur proche, 0=vide)
     implémentation braitenberg légèrement modifié
     """
-    translation = 1.0 #vitesse opti
+    translation = 1.0 # vitesse opti
     
     rotation = 0.0
-    rotation -= sensor_to_wall[sensor_front_left] * 0.15 #petit virage à droite
-    rotation += sensor_to_wall[sensor_front_right] * 0.15 #petit virage à gauche
+    rotation -= sensor_to_wall[sensor_front_left] * 0.15 #petit virage au maximum pour garder la vitesse (mode croisière)
+    rotation += sensor_to_wall[sensor_front_right] * 0.15 
     
-    # Variation aléatoire pour éviter trajectoires répétitives, donc couvrir un maximum de terrain
-    #Avec une proba de 20%, on change légèrement la trajectoire de 0.4 (+ ou -)
+    # Variation aléatoire pour éviter trajectoires répétitives
     if random.random() < 0.2:
         rotation += random.uniform(-0.4, 0.4)
     
@@ -46,15 +49,15 @@ def cruise_braitenberg(sensor_to_wall):
 
 def avoid_walls_braitenberg(sensor_to_wall):
     """
-    comportement pour éviter les murs
+    comportement pour éviter les murs.
+    Arg: sensor_to_wall (senseur inversé : 1=mur proche, 0=vide)
     implémentation braitenberg légèrement modifié
     """
-    translation = 0.9 #légèrement sous la vitesse opti pour tourner de manière plus serrée, on a trouvé cette valeur experimentalement
+    translation = 0.9 
+    rotation = 0.0 
     
-    rotation = 0.0 #de base rotation à 0 pour être droit par rapport au mur qui pose problème
-    
-    rotation -= sensor_to_wall[sensor_front_left] * 1.5 #on tourne beaucoup à droite en prévention du mur devant à gauche
-    rotation -= sensor_to_wall[sensor_left] * 0.8 #on tourne moins à droite en fonction d'à quel point on est proche du mur juste à gauche
+    rotation -= sensor_to_wall[sensor_front_left] * 1.5 
+    rotation -= sensor_to_wall[sensor_left] * 0.8 
     
     rotation += sensor_to_wall[sensor_front_right] * 1.5 
     rotation += sensor_to_wall[sensor_right] * 0.8
@@ -62,7 +65,7 @@ def avoid_walls_braitenberg(sensor_to_wall):
     # réaction forte si mur devant
     if sensor_to_wall[sensor_front] > 0.5:
         translation = 0.5
-        # tourner du côté le plus libre, on a 2 variables d'espace pour comparer l'espace libre qu'on a à gauche et à droite, et on tourne en fonction
+        # comparer l'espace libre à gauche et à droite (senseurs inversés ici, donc on cherche la valeur min)
         left_space = sensor_to_wall[sensor_front_left] + sensor_to_wall[sensor_left] + sensor_to_wall[sensor_rear_left]
         right_space = sensor_to_wall[sensor_front_right] + sensor_to_wall[sensor_right] + sensor_to_wall[sensor_rear_right]
         rotation = -1.0 if left_space > right_space else 1.0
@@ -72,19 +75,17 @@ def avoid_walls_braitenberg(sensor_to_wall):
 
 def avoid_robots_braitenberg(sensors, sensor_to_robot):
     """
-    comportement pour éviter les robots, alliés comme ennemis pour survivre
-    implémentation braitenberg légèrement modifiée
+    comportement pour éviter les robots.
+    Arg: sensor_to_robot (senseur inversé : 1=robot proche)
     """
-    #on se remet droit
     rotation = 0.0
     
-    rotation -= (sensor_to_robot[sensor_front_left] + sensor_to_robot[sensor_left]) * 2.0 #tourner à droite
-    rotation += (sensor_to_robot[sensor_front_right] + sensor_to_robot[sensor_right]) * 2.0 #tourner à gauche
+    rotation -= (sensor_to_robot[sensor_front_left] + sensor_to_robot[sensor_left]) * 2.0 
+    rotation += (sensor_to_robot[sensor_front_right] + sensor_to_robot[sensor_right]) * 2.0 
     
-    # réaction forte si robot devant
+    # réaction forte si robot devant (senseur inversé)
     robot_front = max(sensor_to_robot[sensor_front], sensor_to_robot[sensor_front_left], sensor_to_robot[sensor_front_right])
     
-    #subsomption sur plusieurs cas pour ne pas être bloqué si 2 robots arrivent en même temps.
     if robot_front > 0.6:
         translation = 0.0
         if sensor_to_robot[sensor_front_left] + sensor_to_robot[sensor_left] > sensor_to_robot[sensor_front_right] + sensor_to_robot[sensor_right]:
@@ -99,27 +100,21 @@ def avoid_robots_braitenberg(sensors, sensor_to_robot):
     return translation, rotation
 
 
-# COMPORTEMENTS "trait de caractère""
-
+# COMPORTEMENTS "trait de caractère"
 
 def diagonal_sweeper(sensor_to_wall):
     """
-    balayage aléatoire + fort que le comportement croisière de base
-    implémentation semi braitenbeg semi subsomption
+    balayage aléatoire + fort que le comportement croisière.
+    Arg: sensor_to_wall (senseur inversé : 1=mur proche)
     """
     translation = 1.0
-    #tourner à chaque mur
     rotation = 0.0
     rotation -= sensor_to_wall[sensor_front_left] * 0.6
     rotation += sensor_to_wall[sensor_front_right] * 0.6
     
-    #probabilité de 30% de changer de trajectoire sans forcément rencontrer de mur
+    # probabilité de 30% de changer de trajectoire
     if random.random() < 0.3:
         choice = random.random()
-        #une fois dans ces 30%, on a les probabilités suivante : 
-        #40% de chance de tourner faiblement
-        #30% de chance de tourner modéremment
-        #30% de chance de tourner fortement
         if choice < 0.4:
             rotation += random.uniform(-0.3, 0.3)
         elif choice < 0.7:
@@ -127,8 +122,8 @@ def diagonal_sweeper(sensor_to_wall):
         else:
             rotation += random.choice([-0.9, 0.9])
     
-    # nécessaire pour ne pas faire de cercle
-    # on s'assure de tourner si on est proche d'un mur (max_wall prend tous les murs)
+    # nécessaire pour ne pas faire de cercle (senseurs inversés)
+    # si il y a un mur (donc max_wall = 1) on laisse mur avoider éviter, sinon on tourne de manière aléatoire
     max_wall = max(sensor_to_wall[sensor_front], sensor_to_wall[sensor_front_left], sensor_to_wall[sensor_front_right], 
                    sensor_to_wall[sensor_left], sensor_to_wall[sensor_right], 
                    sensor_to_wall[sensor_rear_left], sensor_to_wall[sensor_rear_right], sensor_to_wall[sensor_rear])
@@ -140,8 +135,9 @@ def diagonal_sweeper(sensor_to_wall):
 
 def wall_hugger_with_gap_detection(sensors, sensor_to_wall):
     """
-    Idéalement, ce comportement suit les murs et repère les trous à 90 degrés, en pratique ce n'est pas trop le cas
-    N'est pas assez haut dans la priorité pour avoir un réel impact dans l'arene 3 par exemple
+    Suit les murs et repère les trous.
+    sensor_to_wall (senseur inversé : 1=mur proche)
+    sensors (senseur NON inversé : 1=vide)
     """
     translation = 1.0
     
@@ -149,7 +145,9 @@ def wall_hugger_with_gap_detection(sensors, sensor_to_wall):
     wall_front_left = sensor_to_wall[sensor_front_left]
     wall_front = sensor_to_wall[sensor_front]
     
-    # Détection de trou (uniquement à gauche car robot va forcément tourner sur lui même et être dans ce cas (grâce à not système de débloquage))
+    # Détection de trou (senseurs inversés)
+    # on a besoin juste de détecter à gauche car si on détecte les 2 en même temps, le robot ne prendra jamais de décision (il va zigzaguer et ne jamais prendre le virage)
+    #le robot viendra éventuellement dans le même tunnel dans le sens inversé auquel cas la droite sera vérifiée dans tous les cas
     gap_detected = (wall_left < 0.15 and wall_front_left < 0.2 and wall_front < 0.3)
     
     if gap_detected:
@@ -157,8 +155,9 @@ def wall_hugger_with_gap_detection(sensors, sensor_to_wall):
         translation = 1.0
     
     elif wall_left > 0.1:
-        target_distance = 0.2
-        current_distance = 1.0 - sensors[sensor_left]
+        target_distance = 0.2 
+        # calcul l'erreur pour tourner de manière adaptative
+        current_distance = 1.0 - sensors[sensor_left] 
         error = current_distance - target_distance
         
         rotation = error * -2.0
@@ -176,18 +175,18 @@ def wall_hugger_with_gap_detection(sensors, sensor_to_wall):
 
 def enemy_chaser_braitenberg(sensor_to_enemy):
     """
-    LOVEBOT version braitenberg vraiment modifiée
-    On utilise les puissances de 10 pour faire des énormes virages
+    LOVEBOT version braitenberg modifiée.
+    sensor_to_enemy (senseur inversé : 1=ennemi proche)
     """
     
     enemy_front = sensor_to_enemy[sensor_front]
     enemy_front_left = sensor_to_enemy[sensor_front_left]
     enemy_front_right = sensor_to_enemy[sensor_front_right]
     
-    #translation trouvée experimentalement (être lent de base pour ajuster sa trajectoire puis rattraper son ennemi)
+    #vitesse lente puis on additionne en fonction de la distance quadratique pour "rattraper" l'ennemi
     translation = 0.1 + 0.4 * (enemy_front**2 + enemy_front_left**2 + enemy_front_right**2)
     
-    # attraction exponentielle (puissance de 2 fonctionnait aussi, mais 10 donne des réactions plus sensible)
+    # attraction exponentielle 
     rotation = (enemy_front_left**10) * 1.0 + (enemy_front_right**10) * (-1.0)
     
     rotation = max(-1.0, min(1.0, rotation))
@@ -197,11 +196,13 @@ def enemy_chaser_braitenberg(sensor_to_enemy):
 
 def genetic_braitenberg(sensors):
     """
-    robot génétique implémenté grâce aux fichiers config_genetic_train.py et robot_genetic_train.py
-    avec une fonction score qui s'assure de tourner le moins possible pour ne pas perdre de vitesse.
+    robot génétique.
+    sensors (senseur NON inversé : 1=vide, 0=obstacle).
+    L'algorithme génétique a optimisé les poids en fonction des valeurs brutes.
     """
-    # Paramètres optimaux après une grosse session d'entrainement
-    param = [0.8, -0.6, 0.4, -0.3,0.2, -0.2, 0.5, -0.5,0.9, 0.7]
+    # Paramètres optimaux
+    #trouvé dans genetic log grâce aux fichiers config_genetic_train.py et robot_genetic_train.py
+    param = [-0.1602,0.0299,0.9529,0.9400,-0.7794,-0.7607,-0.4079,-0.2086,0.6709,0.2895,-0.2284,-1.0000]
     
     rotation = 0.0
     rotation += sensors[sensor_front] * param[0]
@@ -223,10 +224,9 @@ def genetic_braitenberg(sensors):
 
 # COMPORTEMENTS DE DETECTION DE SITUATION ET DEBLOQUAGE
 
-
 def tunnel_navigation(sensors, sensor_to_wall):
     """
-    gestion de navigation dans tunnel (couloir de largeur inférieur à 2 taille du robot) et de virage à 90degrés
+    sensor_to_wall (senseur inversé : 1=mur proche)
     """
     wall_front = sensor_to_wall[sensor_front]
     wall_front_left = sensor_to_wall[sensor_front_left]
@@ -234,18 +234,15 @@ def tunnel_navigation(sensors, sensor_to_wall):
     wall_left = sensor_to_wall[sensor_left]
     wall_right = sensor_to_wall[sensor_right]
     
-    # Détecte virage à 90°
+    # Détecte virage à 90° (valeurs inversées : >0.45 = mur proche)
     if wall_front > 0.45:
-        #détermine la direction du virage
         opening_left = wall_front_left < 0.35 and wall_front_right > 0.5
         opening_right = wall_front_right < 0.35 and wall_front_left > 0.5
-        #coef de 0.6 trouvé experimentalement
+        
         left_score = wall_front_left + wall_left * 0.6
         right_score = wall_front_right + wall_right * 0.6
         score_diff = abs(left_score - right_score)
-        #score_diff c'est la distance par rapport au "début du virage que l'on doit effectuer"
         
-        #disjonction des cas en fonction de virage à gauche, à droite
         if opening_left or (score_diff > 0.35 and left_score < right_score):
             rotation = 1.0
             translation = 0.6
@@ -273,7 +270,6 @@ def tunnel_navigation(sensors, sensor_to_wall):
                 rotation = -0.9
                 translation = 0.65
     
-    #mouvement zigzag pour avancer dans les tunnels et ne pas être constamment bloqué, car capteur front est en diagonale par rapport à la direction du robot
     else:
         left_pressure = wall_front_left + wall_left
         right_pressure = wall_front_right + wall_right
@@ -289,8 +285,10 @@ def tunnel_navigation(sensors, sensor_to_wall):
 
 def unstuck_behavior(memory):
     """
-    comportement de débloquage quasiment 100% efficace en 3 phases grâce à memory
+    Comportement de débloquage (Double utilisation de memory expliquée plus tard)
     """
+    # On met memory à 1000 quand on est bloqué
+    # On récupère l'étape de la séquence (memory > 1000)
     seq = memory - 1000
     
     if seq < 20:
@@ -309,24 +307,27 @@ def unstuck_behavior(memory):
     return translation, rotation
 
 
-# =============================================================================
 # DÉTECTION DE SITUATIONS
-# =============================================================================
+
 
 def detect_tunnel(sensors, sensor_to_wall):
     """
-    Détecte un tunnel étroit
+    détecteur de tunnel, renvoie true
     """
+    #tunnel de l'arene 4 par exemple
     front_clear = sensor_to_wall[sensor_front] < 0.3
     corners_occupied = (sensor_to_wall[sensor_front_left] > 0.25 or sensor_to_wall[sensor_front_right] > 0.25)
+    # inversion manuelle de sensors ici pour obtenir la pression latérale
+    #on a besoin de la pression pour savoir de quel côté commencer le "zigzag"
+    #sensors pas inversé, on prend tous les sensors pour ne pas "rentrer" quand il y a un ennemi
     side_pressure = (1.0 - sensors[sensor_left]) + (1.0 - sensors[sensor_right])
-    
+    #side pressure vaut 2 quand confiné dans un tunnel de largeur 1
     return front_clear and corners_occupied and side_pressure > 0.6
 
 
 def detect_confined_space(sensor_to_wall):
     """
-    Détecte espace confiné (risque de blocage)
+    sensor_to_wall (senseur inversé : 1=mur proche)
     """
     obstacles_count = 0
     for i in range(8):
@@ -334,17 +335,13 @@ def detect_confined_space(sensor_to_wall):
             obstacles_count += 1
     return obstacles_count >= 4
 
-
-# =============================================================================
 # ARCHITECTURE DE SUBSOMPTION
-# =============================================================================
 
 def subsumption_architecture(robot_id, sensors, sensor_to_wall, sensor_to_robot, sensor_to_enemy, memory):
     """
-    Architecture de subsomption afin de créer un arbre de priorité
-    sensor to ennemy fonctionne différemment du reste des sensors, il vaut 1 si ennemi présent (on envoit dans la fonction 1 - sensor[i] plus tard)
+    Architecture de subsomption pour définir les priorités des robots
     """
-    #On a utilisé le string en return pour le débuggage, on le laisse au cas ou on en a encore besoin
+    #on renvoie un string pour le debuggage, on le laisse au cas ou on en a besoin à nouveau
     # PRIORITÉ 1 : DÉBLOCAGE
     if memory >= 1000:
         return unstuck_behavior(memory), "UNSTUCK"
@@ -353,27 +350,27 @@ def subsumption_architecture(robot_id, sensors, sensor_to_wall, sensor_to_robot,
     if detect_tunnel(sensors, sensor_to_wall):
         return tunnel_navigation(sensors, sensor_to_wall), "TUNNEL"
     
-    # PRIORITÉ 3 : ÉVITEMENT ROBOTS (sauf robot 2 qui chassent)
+    # PRIORITÉ 3 : ÉVITEMENT ROBOTS
     if robot_id % 4 != 2:
         enemy_any = max(sensor_to_enemy)
         if enemy_any > 0.25:
             return avoid_robots_braitenberg(sensors, sensor_to_enemy), "AVOID_ENEMY"
     
     # PRIORITÉ 4 : ÉVITEMENT MURS PROCHES
-    wall_front_critical = max(sensor_to_wall[sensor_front], sensor_to_wall[sensor_front_left], sensor_to_wall[sensor_front_right]) > 0.6 #0.6 experimental pour avoir le temps de tourner
+    wall_front_critical = max(sensor_to_wall[sensor_front], sensor_to_wall[sensor_front_left], sensor_to_wall[sensor_front_right]) > 0.6 
     if wall_front_critical:
         return avoid_walls_braitenberg(sensor_to_wall), "AVOID_WALL"
     
-    # PRIORITÉ 5 : COMPORTEMENTS SPÉCIALISÉS PAR ROBOT
+    # PRIORITÉ 5 : COMPORTEMENTS SPÉCIALISÉS
     
     if robot_id % 4 == 0:
         return diagonal_sweeper(sensor_to_wall), "EXPLORER"
     
     elif robot_id % 4 == 1:
+        # Attention : genetic_braitenberg prend 'sensors' (NON inversé)
         return genetic_braitenberg(sensors), "GENETIC"
     
     elif robot_id % 4 == 2:
-        # CHASSEUR : si ennemi détecté chasse, sinon croisiere braitenberg
         enemy_any = max(sensor_to_enemy)
         if enemy_any > 0.1:
             return enemy_chaser_braitenberg(sensor_to_enemy), "ENEMY_CHASE"
@@ -384,9 +381,8 @@ def subsumption_architecture(robot_id, sensors, sensor_to_wall, sensor_to_robot,
         return wall_hugger_with_gap_detection(sensors, sensor_to_wall), "WALL_GAP"
 
 
-# =============================================================================
 # CLASSE ROBOT
-# =============================================================================
+
 
 class Robot_player(Robot):
     team_name = "Toyota Yaris"
@@ -400,23 +396,25 @@ class Robot_player(Robot):
         self.memory = 0
 
     def step(self, sensors, sensor_view=None, sensor_robot=None, sensor_team=None):
-        #on a inversé les valeurs des senseurs pour des valeurs qui nous sont plus "naturelles" :
-        # 1 pour danger, 0 pour pas de danger        
+        
+        #inversion senseurs comme prévenu auparavant
+
+        
         sensor_to_wall = []
         sensor_to_robot = []
         
         for i in range(8):
             if sensor_view[i] == 1:
-                sensor_to_wall.append(1.0 - sensors[i]) #inversion de valeur
+                sensor_to_wall.append(1.0 - sensors[i]) # (senseur inversé)
                 sensor_to_robot.append(0.0)
             elif sensor_view[i] == 2:
                 sensor_to_wall.append(0.0)
-                sensor_to_robot.append(1.0 - sensors[i]) #inversion de valeur
+                sensor_to_robot.append(1.0 - sensors[i]) # (senseur inversé)
             else:
                 sensor_to_wall.append(0.0)
                 sensor_to_robot.append(0.0)
         
-        # on filtre les robots ennemis
+        # Filtre pour les ennemis uniquement (senseur inversé)
         sensor_to_enemy = []
         for i in range(8):
             if sensor_view[i] == 2 and sensor_team[i] != self.team_name:
@@ -424,17 +422,26 @@ class Robot_player(Robot):
             else:
                 sensor_to_enemy.append(0.0)
         
-        # détecter bloquage
+        # détection bloquage et gestion mémoire
         
         in_tunnel = detect_tunnel(sensors, sensor_to_wall)
         confined = detect_confined_space(sensor_to_wall)
         
+        # max car valeurs inversées : on cherche le mur/robot le plus proche (valeur la plus haute)
         wall_front = max(sensor_to_wall[sensor_front], sensor_to_wall[sensor_front_left], sensor_to_wall[sensor_front_right])
-        #max vu qu'on a inversé pour les murs
         robot_front = max(sensor_to_robot[sensor_front], sensor_to_robot[sensor_front_left], sensor_to_robot[sensor_front_right])
         
-        # FONCTIONNEMENT MEMOIRE
-        # compter les dangers
+
+        # IMPORTANT :         # EXPLICATION DE L'UTILISATION DE self.memory
+        # La variable memory a deux usages différents selon sa valeur :
+
+
+
+        #    COMPTEUR DE DANGER (Valeurs < 1000) :
+        #    On incrémente memory progressivement si le robot est dans une situation de blocage potentiel
+        #    (face à un mur, espace confiné, dans un L, rate un virage, coincé contre un robot). Si la situation se maintient, memory augmente jusqu'au seuil critique (50).
+        #    Si la voie est libre, memory diminue.
+        
         if not in_tunnel:
             if confined or wall_front > 0.5 or robot_front > 0.6:
                 self.memory += 2
@@ -453,25 +460,26 @@ class Robot_player(Robot):
             else:
                 self.memory = max(0, self.memory - 1)
         
-        # Trigger le déblocage en mettant memory à 1000 (parce que sinon memory n'atteint jamais 1000 naturellement )
+        #    MEMORY POUR DÉBLOCAGE (Valeurs >= 1000) :
+        #    Si le compteur dépasse 50, on déclenche le mode "UNSTUCK" en sautant directement à 1000.
+        #    Ensuite, memory sert de compteur d'étape pour jouer une séquence prédéfinie dans unstuck_behavior (reculer, tourner, avancer) d'où les 3 séquences
+        
         if self.memory > 50 and self.memory < 1000:
             self.memory = 1000
-        
-        #appliquer la subsomption
+
+        #architecture
         
         (translation, rotation), state = subsumption_architecture(
             self.robot_id, sensors, sensor_to_wall, sensor_to_robot, sensor_to_enemy, self.memory
         )
         
-        # incrémenter  memory pour débloquage
+        #l'incrémentation pendant la séquence de déblocage
         if self.memory >= 1000:
             self.memory += 1
-            if self.memory >= 1055:
+            if self.memory >= 1055: # Fin de la séquence
                 self.memory = 0
         
-        # Limite rotation
+        # Limite rotation finale pour le moteur
         rotation = max(-1.0, min(1.0, rotation))
         
         return translation, rotation, False
-
-

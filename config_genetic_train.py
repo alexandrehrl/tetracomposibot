@@ -1,11 +1,9 @@
-# Configuration pour entraînement génétique Paint Wars
 
 import arenas
 
-# ========== AFFICHAGE ==========
 
-display_mode = 2  # 2 = très rapide (pas d'affichage) pour entraînement
-arena = 1  # Arène 1 (classic) pour entraînement
+display_mode = 2  
+arena = 1 
 position = False 
 
 display_welcome_message = False
@@ -15,13 +13,11 @@ display_team_stats = False
 display_tournament_results = False
 display_time_stats = True
 
-# ========== OPTIMISATION ==========
 
-evaluations = 4500  # 500 générations × 3 conditions = 1500 évaluations
-it_per_evaluation = 1000  # 400 itérations par évaluation
+evaluations = 4500  
+it_per_evaluation = 1000 
 max_iterations = evaluations * it_per_evaluation + 1
 
-# ========== INITIALISATION ==========
 
 import robot_genetic_train
 
