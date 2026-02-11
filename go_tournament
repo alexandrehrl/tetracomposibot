@@ -7,6 +7,6 @@ display_mode=1
 for mapId in {0..4}; do
 	echo "Arena: $mapId"
     for initPos in True False; do
-        python tetracomposibot.py config_Paintwars "$mapId" "$initPos" "$display_mode"
+        python3 tetracomposibot.py config_Paintwars "$mapId" "$initPos" "$display_mode"
     done
 done
